@@ -1,10 +1,12 @@
-import {StyleSheet} from 'react-native';
+import {Dimensions, StyleSheet} from 'react-native';
 import {
   heightPercentageToDP as hp,
   widthPercentageToDP as wp,
 } from 'react-native-responsive-screen';
 import {THEME} from '../../constants/theme';
 import {RFPercentage} from 'react-native-responsive-fontsize';
+
+const {width} = Dimensions.get('window');
 
 export const styles = StyleSheet.create({
   container: {
@@ -50,7 +52,6 @@ export const styles = StyleSheet.create({
     marginVertical: hp(1),
   },
   controlButton: {
-    // backgroundColor: '#555',
     padding: wp(3),
     borderRadius: 200 / 2,
     marginHorizontal: wp(6),

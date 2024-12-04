@@ -3,14 +3,20 @@ import {
   heightPercentageToDP as hp,
   widthPercentageToDP as wp,
 } from 'react-native-responsive-screen';
-import {THEME} from '../../constants/theme';
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.PRIMARY,
+    backgroundColor: '#61dafb',
   },
   innerContainer: {
     paddingHorizontal: wp(3),
+    alignItems: 'center',
+    marginVertical: hp(14),
+  },
+  image: {
+    height: 300,
+    width: 300,
+    marginBottom: hp(10),
   },
 });

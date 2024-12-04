@@ -1,155 +1,161 @@
 import React, {useState, useEffect} from 'react';
-import {View, Text, TouchableOpacity, Dimensions, Alert} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  Dimensions,
+  TouchableOpacity,
+  StatusBar,
+} from 'react-native';
+import {THEME} from '../../constants/theme';
 import Feather from 'react-native-vector-icons/Feather';
-import {styles} from './styles';
+import {
+  heightPercentageToDP as hp,
+  widthPercentageToDP as wp,
+} from 'react-native-responsive-screen';
+import LinearGradient from 'react-native-linear-gradient';
 
-const {width, height} = Dimensions.get('window');
-const GRID_SIZE = Math.floor(Math.min(width, height) / 15);
-const SPEED = 200;
+const {width} = Dimensions.get('window');
+const GRID_SIZE = 15;
+const CELL_SIZE = width / GRID_SIZE;
+const INITIAL_SNAKE = [{x: 5, y: 5}];
+const INITIAL_FOOD = {x: 10, y: 10};
+const DIRECTIONS = {
+  UP: {x: 0, y: -1},
+  DOWN: {x: 0, y: 1},
+  LEFT: {x: -1, y: 0},
+  RIGHT: {x: 1, y: 0},
+};
 
-type Coordinate = [number, number];
-
-const Game: React.FC = () => {
-  const [snake, setSnake] = useState<Coordinate[]>([[0, 0]]);
-  const [food, setFood] = useState<Coordinate>([5, 5]);
-  const [direction, setDirection] = useState<'UP' | 'DOWN' | 'LEFT' | 'RIGHT'>(
-    'RIGHT',
-  );
-  const [isGameOver, setIsGameOver] = useState<boolean>(false);
-  const [score, setScore] = useState<number>(0);
+const App = () => {
+  const [snake, setSnake] = useState(INITIAL_SNAKE);
+  const [food, setFood] = useState(INITIAL_FOOD);
+  const [direction, setDirection] = useState(DIRECTIONS.RIGHT);
+  const [isGameOver, setIsGameOver] = useState(false);
 
   useEffect(() => {
-    if (isGameOver) return;
-    const interval = setInterval(() => moveSnake(), SPEED);
+    const interval = setInterval(moveSnake, 200);
     return () => clearInterval(interval);
-  }, [snake, direction, isGameOver]);
+  }, [snake, direction]);
 
-  const randomFoodPosition = (): Coordinate => {
-    const maxGridX = Math.floor(width / GRID_SIZE) - 1;
-    const maxGridY = Math.floor(height / GRID_SIZE) - 1;
-    return [
-      Math.floor(Math.random() * (maxGridX + 1)),
-      Math.floor(Math.random() * (maxGridY + 1)),
-    ];
-  };
-
-  const moveSnake = (): void => {
-    const newSnake = [...snake];
-    const head = newSnake[newSnake.length - 1];
-    let newHead: Coordinate;
-
-    switch (direction) {
-      case 'UP':
-        newHead = [head[0], head[1] - 1];
-        break;
-      case 'DOWN':
-        newHead = [head[0], head[1] + 1];
-        break;
-      case 'LEFT':
-        newHead = [head[0] - 1, head[1]];
-        break;
-      case 'RIGHT':
-        newHead = [head[0] + 1, head[1]];
-        break;
+  useEffect(() => {
+    if (checkCollision()) {
+      endGame();
     }
+  }, [snake]);
 
-    if (checkCollision(newHead)) {
-      gameOver();
-      return;
-    }
+  const moveSnake = () => {
+    if (isGameOver) return;
 
-    newSnake.push(newHead);
+    const head = snake[snake.length - 1];
+    const newHead = {
+      x: head.x + direction.x,
+      y: head.y + direction.y,
+    };
 
-    if (checkFoodCollision(newHead)) {
-      setScore(score + 1);
-      setFood(randomFoodPosition());
+    const newSnake = [...snake, newHead];
+
+    if (newHead.x === food.x && newHead.y === food.y) {
+      setFood(generateFood());
     } else {
-      newSnake.shift();
+      newSnake.shift(); // Remove tail
     }
 
     setSnake(newSnake);
   };
 
-  const checkCollision = (head: Coordinate): boolean => {
-    const maxGridX = Math.floor(width / GRID_SIZE);
-    const maxGridY = Math.floor(height / GRID_SIZE);
+  const changeDirection = (newDirection: any) => {
     if (
-      head[0] < 0 ||
-      head[0] >= maxGridX ||
-      head[1] < 0 ||
-      head[1] >= maxGridY
+      (direction.x === -newDirection.x && direction.y === -newDirection.y) ||
+      isGameOver
+    ) {
+      return;
+    }
+    setDirection(newDirection);
+  };
+
+  const checkCollision = () => {
+    const head = snake[snake.length - 1];
+
+    if (
+      head.x < 0 ||
+      head.y < 0 ||
+      head.x >= GRID_SIZE ||
+      head.y >= GRID_SIZE
     ) {
       return true;
     }
-    return snake.some(
-      segment => segment[0] === head[0] && segment[1] === head[1],
-    );
+
+    for (let i = 0; i < snake.length - 1; i++) {
+      if (snake[i].x === head.x && snake[i].y === head.y) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
-  const checkFoodCollision = (head: Coordinate): boolean => {
-    return head[0] === food[0] && head[1] === food[1];
+  const generateFood = () => {
+    let newFood: any;
+    while (true) {
+      newFood = {
+        x: Math.floor(Math.random() * GRID_SIZE),
+        y: Math.floor(Math.random() * GRID_SIZE),
+      };
+
+      if (
+        !snake.some(
+          segment => segment.x === newFood.x && segment.y === newFood.y,
+        )
+      ) {
+        break;
+      }
+    }
+    return newFood;
   };
 
-  const gameOver = (): void => {
+  const endGame = () => {
     setIsGameOver(true);
-    Alert.alert('Game Over', `Your Score: ${score}`, [
-      {text: 'Restart', onPress: restartGame},
+    Alert.alert('Game Over', `Your score: ${snake.length}`, [
+      {text: 'Restart', onPress: resetGame},
     ]);
   };
 
-  const restartGame = (): void => {
-    setSnake([[0, 0]]);
-    setFood(randomFoodPosition());
-    setDirection('RIGHT');
+  const resetGame = () => {
+    setSnake(INITIAL_SNAKE);
+    setFood(INITIAL_FOOD);
+    setDirection(DIRECTIONS.RIGHT);
     setIsGameOver(false);
-    setScore(0);
-  };
-
-  const changeDirection = (
-    newDirection: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT',
-  ): void => {
-    if (
-      (newDirection === 'UP' && direction !== 'DOWN') ||
-      (newDirection === 'DOWN' && direction !== 'UP') ||
-      (newDirection === 'LEFT' && direction !== 'RIGHT') ||
-      (newDirection === 'RIGHT' && direction !== 'LEFT')
-    ) {
-      setDirection(newDirection);
-    }
   };
 
   return (
     <LinearGradient
       colors={['#2980b9', '#6dd5fa', '#ffffff']}
       style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.scoreText}>Score: {score}</Text>
-      </View>
+      <StatusBar animated={true} backgroundColor="#2980b9" />
+      <Text style={styles.score}>Score: {snake.length - 1}</Text>
       <View style={styles.grid}>
         {snake.map((segment, index) => (
           <View
             key={index}
             style={[
-              styles.snake,
+              styles.cell,
               {
-                width: GRID_SIZE,
-                height: GRID_SIZE,
-                left: segment[0] * GRID_SIZE,
-                top: segment[1] * GRID_SIZE,
+                left: segment.x * CELL_SIZE,
+                top: segment.y * CELL_SIZE,
+                backgroundColor: 'green',
               },
             ]}
           />
         ))}
         <View
           style={[
-            styles.food,
+            styles.cell,
             {
-              width: GRID_SIZE,
-              height: GRID_SIZE,
-              left: food[0] * GRID_SIZE,
-              top: food[1] * GRID_SIZE,
-              borderRadius: GRID_SIZE / 2,
+              left: food.x * CELL_SIZE,
+              top: food.y * CELL_SIZE,
+              backgroundColor: 'red',
             },
           ]}
         />
@@ -158,26 +164,26 @@ const Game: React.FC = () => {
         <View style={styles.controlsRow}>
           <TouchableOpacity
             style={[styles.controlButton, styles.upButton]}
-            onPress={() => changeDirection('UP')}>
+            onPress={() => changeDirection(DIRECTIONS.UP)}>
             <Feather name="arrow-up" size={32} color="#fff" />
           </TouchableOpacity>
         </View>
         <View style={styles.controlsRow}>
           <TouchableOpacity
             style={[styles.controlButton, styles.leftButton]}
-            onPress={() => changeDirection('LEFT')}>
+            onPress={() => changeDirection(DIRECTIONS.LEFT)}>
             <Feather name="arrow-left" size={32} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.controlButton, styles.rightButton]}
-            onPress={() => changeDirection('RIGHT')}>
+            onPress={() => changeDirection(DIRECTIONS.RIGHT)}>
             <Feather name="arrow-right" size={32} color="#fff" />
           </TouchableOpacity>
         </View>
         <View style={styles.controlsRow}>
           <TouchableOpacity
             style={[styles.controlButton, styles.downButton]}
-            onPress={() => changeDirection('DOWN')}>
+            onPress={() => changeDirection(DIRECTIONS.DOWN)}>
             <Feather name="arrow-down" size={32} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -186,4 +192,59 @@ const Game: React.FC = () => {
   );
 };
 
-export default Game;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  score: {
+    color: '#fff',
+    fontSize: 24,
+    margin: 10,
+  },
+  grid: {
+    width: '98%',
+    height: width,
+    position: 'relative',
+    borderRadius: 10,
+    backgroundColor: THEME.WHITE,
+    marginVertical: hp(4),
+  },
+  cell: {
+    position: 'absolute',
+    width: CELL_SIZE - 2,
+    height: CELL_SIZE - 2,
+    margin: 1,
+    borderRadius: CELL_SIZE / 2,
+  },
+  controls: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: hp(1),
+  },
+  controlButton: {
+    padding: wp(3),
+    borderRadius: 200 / 2,
+    marginHorizontal: wp(6),
+  },
+  upButton: {
+    backgroundColor: '#007aff',
+  },
+  downButton: {
+    backgroundColor: '#ff3b30',
+  },
+  leftButton: {
+    backgroundColor: '#4cd964',
+  },
+  rightButton: {
+    backgroundColor: '#ff9500',
+  },
+});
+
+export default App;
